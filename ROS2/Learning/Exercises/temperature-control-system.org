@@ -1,8 +1,8 @@
 * Temperature Control Systems
 A room is equiped with an automated temperature control systems. Build a ROS2 module with following components:
 ** Node
-Create a node that stores the temperature of the room
-The node exposes:
+*** Create a node that stores the temperature of the room
+  The node exposes:
 *** A service that returns the current temperature
 *** A temperature monitor that publishes the current temperature of the room after every 1 second
 *** A service that tries to increase/decrease the temperature of a room by 1 degree.
@@ -17,7 +17,7 @@ But as all systems have errors and temperature can't rise instantaneously, so we
     return temperature
 #+END_SRC
 This service can be extended with decrement functionality
-*** An action server that can be used to control the temperature of a room.
+*** An action server that can be used to set the temperature of a room.
 **** Action Message:
       desired_temperature: integer
 **** Task:
