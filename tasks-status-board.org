@@ -1,0 +1,38 @@
+#+title: Tasks Status Board
+
+* Learning
+** Exercises
+*** ROS2 Basics Practice: Temperature Control System
+Task Created: <2023-01-27 Fri>
+Priority Deadline: <2023-01-30 Mon>
+Submission Deadline: <2023-02-02 Thu>
+
+|-----------------------+--------|
+| Member Name           | Status |
+| A. K. M. Rakinuzzaman |        |
+| Abdullah Noman        |        |
+| Abir Hossain          |        |
+| Abrar Mahabub Nowrid  |        |
+| Adnan Ahmad           |        |
+| Alif Arshad           |        |
+| Anika Farzana         |        |
+| Ashiqur Rahman Joy    |        |
+| Ashraful Haque        |        |
+| Efazz Bari            |        |
+| Ikrama Hossain        |        |
+| Kazi Jarif            |        |
+| Lamiya Tahsin Orpa    |        |
+| Lomatul Mahzabin      |        |
+| Md Ariful Islam       |        |
+| MD Sabbir Rahman      |        |
+| Mukit Mahdin          |        |
+| Nokimul Hasan Arif    |        |
+| Raiyan Noor           |        |
+| Ramisa Zaman Audhi    |        |
+| Rezwan Islam Salvi    |        |
+| Safirur Rashid        |        |
+| Salman Ahsan          |        |
+| Samnun Azfar          |        |
+| Sazid Hasan           |        |
+| Tahmid Rahman         |        |
+|-----------------------+--------|
