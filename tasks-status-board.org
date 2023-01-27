@@ -3,10 +3,10 @@
 * Learning
 ** Exercises
 *** ROS2 Basics Practice: Temperature Control System
-Task Created: <2023-01-27 Fri>
-Priority Deadline: <2023-01-30 Mon>
-Submission Deadline: <2023-02-02 Thu>
-
+**** Task Created: <2023-01-27 Fri>
+**** Priority Deadline: <2023-01-30 Mon>
+**** Submission Deadline: <2023-02-02 Thu>
+**** Status:
 |-----------------------+--------|
 | Member Name           | Status |
 | A. K. M. Rakinuzzaman |        |
@@ -35,4 +35,5 @@ Submission Deadline: <2023-02-02 Thu>
 | Samnun Azfar          |        |
 | Sazid Hasan           |        |
 | Tahmid Rahman         |        |
+|                       |        |
 |-----------------------+--------|
