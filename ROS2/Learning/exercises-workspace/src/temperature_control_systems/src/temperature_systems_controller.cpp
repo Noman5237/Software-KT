@@ -45,16 +45,16 @@ public:
 		// create a service to return the current temperature
 		getCurrentTemperatureService = this->create_service<GetCurrentTemperature>(
 				contextPrefix + "__get_current_temperature",
-				[this](const std::shared_ptr<GetCurrentTemperature::Request> request,
-				       const std::shared_ptr<GetCurrentTemperature::Response> response) {
+				[this](const std::shared_ptr<GetCurrentTemperature::Request>& request,
+				       const std::shared_ptr<GetCurrentTemperature::Response>& response) {
 					get_current_temperature_callback(request, response);
 				}
 		);
 		// create a service to increment or decrement the current temperature
 		incrementDecrementTemperatureService = this->create_service<IncrementDecrementTemperature>(
 				contextPrefix + "__increment_decrement_temperature",
-				[this](const std::shared_ptr<IncrementDecrementTemperature::Request> request,
-				       const std::shared_ptr<IncrementDecrementTemperature::Response> response) {
+				[this](const std::shared_ptr<IncrementDecrementTemperature::Request>& request,
+				       const std::shared_ptr<IncrementDecrementTemperature::Response>& response) {
 					increment_decrement_temperature_callback(request, response);
 				}
 		);
@@ -64,13 +64,13 @@ public:
 				this,
 				contextPrefix + "__set_temperature",
 				[this](const rclcpp_action::GoalUUID &uuid,
-				       const shared_ptr<const SetTemperature::Goal> goal) {
+				       const shared_ptr<const SetTemperature::Goal>& goal) {
 					return handle_set_temperature_action_callback(uuid, goal);
 				},
-				[this](const shared_ptr<rclcpp_action::ServerGoalHandle<SetTemperature>> goalHandle) {
+				[this](const shared_ptr<rclcpp_action::ServerGoalHandle<SetTemperature>> &goalHandle) {
 					return cancel_set_temperature_action_callback(goalHandle);
 				},
-				[this](const shared_ptr<rclcpp_action::ServerGoalHandle<SetTemperature>> goalHandle) {
+				[this](const shared_ptr<rclcpp_action::ServerGoalHandle<SetTemperature>> &goalHandle) {
 					accepted_set_temperature_action_callback(goalHandle);
 				}
 		);
@@ -92,8 +92,8 @@ private:
 private:
 	void
 	get_current_temperature_callback(
-			const std::shared_ptr<GetCurrentTemperature::Request> request,
-			const std::shared_ptr<GetCurrentTemperature::Response> response) {
+			const std::shared_ptr<GetCurrentTemperature::Request>& request,
+			const std::shared_ptr<GetCurrentTemperature::Response>& response) {
 		RCLCPP_INFO(this->get_logger(), "Incoming request for current temperature");
 		response->temperature = currentTemperature;
 	}
@@ -101,8 +101,8 @@ private:
 private:
 	void
 	increment_decrement_temperature_callback(
-			const std::shared_ptr<IncrementDecrementTemperature::Request> request,
-			const std::shared_ptr<IncrementDecrementTemperature::Response> response) {
+			const std::shared_ptr<IncrementDecrementTemperature::Request>& request,
+			const std::shared_ptr<IncrementDecrementTemperature::Response>& response) {
 		bool isIncrement = request->increment;
 		RCLCPP_INFO(this->get_logger(), "Incoming request for %s temperature",
 		            isIncrement ? "increment" : "decrement");
@@ -126,7 +126,7 @@ private:
 private:
 	rclcpp_action::GoalResponse
 	handle_set_temperature_action_callback(const rclcpp_action::GoalUUID &uuid,
-	                                       const shared_ptr<const SetTemperature::Goal> goal) {
+	                                       const shared_ptr<const SetTemperature::Goal> &goal) {
 		RCLCPP_INFO(this->get_logger(), "Incoming request for setting temperature");
 		if (actionServerBusy) {
 			return rclcpp_action::GoalResponse::REJECT;
@@ -138,7 +138,7 @@ private:
 private:
 	rclcpp_action::CancelResponse
 	cancel_set_temperature_action_callback(
-			const shared_ptr<rclcpp_action::ServerGoalHandle<SetTemperature>> goalHandle) {
+			const shared_ptr<rclcpp_action::ServerGoalHandle<SetTemperature>> &goalHandle) {
 		RCLCPP_INFO(this->get_logger(), "Incoming request for cancelling setting temperature");
 		return rclcpp_action::CancelResponse::ACCEPT;
 	}
@@ -146,7 +146,7 @@ private:
 private:
 	void
 	accepted_set_temperature_action_callback(
-			const shared_ptr<rclcpp_action::ServerGoalHandle<SetTemperature>> goalHandle) {
+			const shared_ptr<rclcpp_action::ServerGoalHandle<SetTemperature>> &goalHandle) {
 		auto actionThread = thread([this, goalHandle]() {
 			RCLCPP_INFO(this->get_logger(), "Incoming request for accepting setting temperature");
 			auto feedback = std::make_shared<SetTemperature::Feedback>();
@@ -193,6 +193,8 @@ private:
 			goalHandle->succeed(result);
 			actionServerBusy = false;
 		});
+		
+		actionThread.detach();
 	}
 };
 
