@@ -1,3 +1,5 @@
+#include <random>
+
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "std_msgs/msg/int16.hpp"
@@ -27,7 +29,12 @@ private:
 	// action server to set the temperature
 	rclcpp_action::Server<SetTemperature>::SharedPtr setTemperatureActionServer;
 	// status of the action server busy or not
-	bool actionServerBusy = false;
+	volatile bool actionServerBusy = false;
+	// thread to execute the action server
+	thread actionThread;
+	
+	// uniform random number generator
+	default_random_engine randomNumber;
 
 
 public:
@@ -37,7 +44,7 @@ public:
 	
 	TemperatureSystemsControllerNode() : Node("temperature_control_systems") {
 		// initialize the current temperature with random value between 15 and 100
-		currentTemperature = rand() % 85 + 15;
+		currentTemperature = (short) (15 + (randomNumber() % 85));
 		// create a publisher
 		temperaturePublisher = this->create_publisher<std_msgs::msg::Int16>(contextPrefix + "__temperature", 10);
 		// create a monitor timer
@@ -45,16 +52,16 @@ public:
 		// create a service to return the current temperature
 		getCurrentTemperatureService = this->create_service<GetCurrentTemperature>(
 				contextPrefix + "__get_current_temperature",
-				[this](const std::shared_ptr<GetCurrentTemperature::Request>& request,
-				       const std::shared_ptr<GetCurrentTemperature::Response>& response) {
+				[this](const std::shared_ptr<GetCurrentTemperature::Request> &request,
+				       const std::shared_ptr<GetCurrentTemperature::Response> &response) {
 					get_current_temperature_callback(request, response);
 				}
 		);
 		// create a service to increment or decrement the current temperature
 		incrementDecrementTemperatureService = this->create_service<IncrementDecrementTemperature>(
 				contextPrefix + "__increment_decrement_temperature",
-				[this](const std::shared_ptr<IncrementDecrementTemperature::Request>& request,
-				       const std::shared_ptr<IncrementDecrementTemperature::Response>& response) {
+				[this](const std::shared_ptr<IncrementDecrementTemperature::Request> &request,
+				       const std::shared_ptr<IncrementDecrementTemperature::Response> &response) {
 					increment_decrement_temperature_callback(request, response);
 				}
 		);
@@ -64,7 +71,7 @@ public:
 				this,
 				contextPrefix + "__set_temperature",
 				[this](const rclcpp_action::GoalUUID &uuid,
-				       const shared_ptr<const SetTemperature::Goal>& goal) {
+				       const shared_ptr<const SetTemperature::Goal> &goal) {
 					return handle_set_temperature_action_callback(uuid, goal);
 				},
 				[this](const shared_ptr<rclcpp_action::ServerGoalHandle<SetTemperature>> &goalHandle) {
@@ -92,8 +99,8 @@ private:
 private:
 	void
 	get_current_temperature_callback(
-			const std::shared_ptr<GetCurrentTemperature::Request>& request,
-			const std::shared_ptr<GetCurrentTemperature::Response>& response) {
+			const std::shared_ptr<GetCurrentTemperature::Request> &request,
+			const std::shared_ptr<GetCurrentTemperature::Response> &response) {
 		RCLCPP_INFO(this->get_logger(), "Incoming request for current temperature");
 		response->temperature = currentTemperature;
 	}
@@ -101,13 +108,13 @@ private:
 private:
 	void
 	increment_decrement_temperature_callback(
-			const std::shared_ptr<IncrementDecrementTemperature::Request>& request,
-			const std::shared_ptr<IncrementDecrementTemperature::Response>& response) {
+			const std::shared_ptr<IncrementDecrementTemperature::Request> &request,
+			const std::shared_ptr<IncrementDecrementTemperature::Response> &response) {
 		bool isIncrement = request->increment;
 		RCLCPP_INFO(this->get_logger(), "Incoming request for %s temperature",
 		            isIncrement ? "increment" : "decrement");
 		// check if the temperature can be increased
-		bool canIncreaseTemperature = rand() % 2;
+		bool canIncreaseTemperature = randomNumber() % 2 == 0;
 		if (!canIncreaseTemperature) {
 			response->success = false;
 			response->temperature = currentTemperature;
@@ -115,12 +122,15 @@ private:
 			return;
 		}
 		// sleep for a random time between 0.1s and 0.5s
-		this_thread::sleep_for(chrono::milliseconds(rand() % 400 + 100));
+		
+		auto sleepTime = 100 + (randomNumber() % 400);
+		this_thread::sleep_for(chrono::milliseconds(sleepTime));
 		// increase/decrease the temperature
 		currentTemperature += isIncrement ? 1 : -1;
 		response->success = true;
 		response->temperature = currentTemperature;
 		response->message = "Temperature " + string(isIncrement ? "increased" : "decreased") + " successfully";
+		RCLCPP_INFO(this->get_logger(), "%s", response->message.c_str());
 	}
 
 private:
@@ -147,7 +157,7 @@ private:
 	void
 	accepted_set_temperature_action_callback(
 			const shared_ptr<rclcpp_action::ServerGoalHandle<SetTemperature>> &goalHandle) {
-		auto actionThread = thread([this, goalHandle]() {
+		actionThread = thread([this, goalHandle]() {
 			RCLCPP_INFO(this->get_logger(), "Incoming request for accepting setting temperature");
 			auto feedback = std::make_shared<SetTemperature::Feedback>();
 			auto result = std::make_shared<SetTemperature::Result>();
@@ -160,11 +170,12 @@ private:
 			while (temperature != targetTemperature) {
 				// check if there is a cancel request
 				if (goalHandle->is_canceling()) {
-//				result->success = false;
+					result->success = false;
 					result->temperature = temperature;
-//				result->message = "Setting temperature cancelled";
+					result->message = "Setting temperature cancelled";
 					goalHandle->canceled(result);
 					actionServerBusy = false;
+					RCLCPP_INFO(this->get_logger(), "Setting temperature cancelled");
 					return;
 				}
 				
@@ -186,16 +197,18 @@ private:
 				goalHandle->publish_feedback(feedback);
 				RCLCPP_DEBUG(this->get_logger(), "Publishing feedback: '%s'", to_string(feedback->progress).c_str());
 			}
-
-//		result->success = true;
+			
+			result->success = true;
 			result->temperature = temperature;
-//		result->message = "Temperature set successfully";
+			result->message = "Setting temperature succeeded";
 			goalHandle->succeed(result);
 			actionServerBusy = false;
+			RCLCPP_INFO(this->get_logger(), "Setting temperature succeeded");
 		});
 		
 		actionThread.detach();
 	}
+	
 };
 
 int
