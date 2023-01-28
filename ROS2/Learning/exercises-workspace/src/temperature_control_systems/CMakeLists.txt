@@ -11,13 +11,14 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(rclcpp_action REQUIRED)
 find_package(temperature_control_systems_interfaces REQUIRED)
 
 add_executable(temperature_systems_controller src/temperature_systems_controller.cpp)
 
 ament_target_dependencies(
 	temperature_systems_controller 
-	rclcpp std_msgs 
+	rclcpp std_msgs rclcpp_action
 	temperature_control_systems_interfaces)
 
 install(TARGETS

@@ -11,6 +11,7 @@
 
 	<depend>rclcpp</depend>
 	<depend>std_msgs</depend>
+	<depend>rclcpp_action</depend>
 	<depend>temperature_control_systems_interfaces</depend>
 
 	<export>
