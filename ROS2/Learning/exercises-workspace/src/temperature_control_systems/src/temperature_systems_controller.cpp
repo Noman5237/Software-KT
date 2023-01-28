@@ -26,6 +26,9 @@ private:
 	rclcpp::Service<IncrementDecrementTemperature>::SharedPtr increment_decrement_temperature_service;
 	// action server to set the temperature
 	rclcpp_action::Server<SetTemperature>::SharedPtr set_temperature_action_server;
+	// status of the action server busy or not
+	bool action_server_busy = false;
+
 
 public:
 #pragma clang diagnostic push
@@ -62,7 +65,7 @@ public:
 				context_prefix + "__set_temperature",
 				[this](const rclcpp_action::GoalUUID &uuid,
 				       const shared_ptr<const SetTemperature::Goal> goal) {
-					return set_temperature_action_callback(uuid, goal);
+					return handle_set_temperature_action_callback(uuid, goal);
 				},
 				[this](const shared_ptr<rclcpp_action::ServerGoalHandle<SetTemperature>> goalHandle) {
 					return cancel_set_temperature_action_callback(goalHandle);
@@ -71,6 +74,7 @@ public:
 					accepted_set_temperature_action_callback(goalHandle);
 				}
 		);
+		
 	}
 
 #pragma clang diagnostic pop
@@ -81,7 +85,7 @@ private:
 		// publish the current temperature
 		auto message = std_msgs::msg::Int16();
 		message.data = current_temperature;
-		RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", to_string(message.data).c_str());
+		RCLCPP_DEBUG(this->get_logger(), "Publishing: '%s'", to_string(message.data).c_str());
 		temperature_publisher->publish(message);
 	}
 
@@ -121,9 +125,13 @@ private:
 
 private:
 	rclcpp_action::GoalResponse
-	set_temperature_action_callback(const rclcpp_action::GoalUUID &uuid,
-	                                const shared_ptr<const SetTemperature::Goal> goal) {
+	handle_set_temperature_action_callback(const rclcpp_action::GoalUUID &uuid,
+	                                       const shared_ptr<const SetTemperature::Goal> goal) {
 		RCLCPP_INFO(this->get_logger(), "Incoming request for setting temperature");
+		if (action_server_busy) {
+			return rclcpp_action::GoalResponse::REJECT;
+		}
+		action_server_busy = true;
 		return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
 	}
 
@@ -131,14 +139,58 @@ private:
 	rclcpp_action::CancelResponse
 	cancel_set_temperature_action_callback(
 			const shared_ptr<rclcpp_action::ServerGoalHandle<SetTemperature>> goalHandle) {
-		
+		RCLCPP_INFO(this->get_logger(), "Incoming request for cancelling setting temperature");
+		return rclcpp_action::CancelResponse::ACCEPT;
 	}
 
 private:
 	void
 	accepted_set_temperature_action_callback(
 			const shared_ptr<rclcpp_action::ServerGoalHandle<SetTemperature>> goalHandle) {
+		RCLCPP_INFO(this->get_logger(), "Incoming request for accepting setting _current_temperature");
+		auto feedback = std::make_shared<SetTemperature::Feedback>();
+		auto result = std::make_shared<SetTemperature::Result>();
+		auto goal = goalHandle->get_goal();
+		auto target_temperature = goal->temperature;
+		auto initial_temperature = current_temperature;
+		auto _current_temperature = current_temperature;
+		auto is_increment = target_temperature > current_temperature;
 		
+		while (_current_temperature != target_temperature) {
+			// check if there is a cancel request
+			if (goalHandle->is_canceling()) {
+//				result->success = false;
+				result->temperature = _current_temperature;
+//				result->message = "Setting _current_temperature cancelled";
+				goalHandle->canceled(result);
+				action_server_busy = false;
+				return;
+			}
+			
+			// call the increment/decrement service
+			auto request = std::make_shared<IncrementDecrementTemperature::Request>();
+			request->increment = is_increment;
+			// create a client for the service
+			auto increment_decrement_temperature_client = this->create_client<IncrementDecrementTemperature>(
+					context_prefix + "__increment_decrement_temperature");
+			// send the request
+			auto future = increment_decrement_temperature_client->async_send_request(request);
+			// wait for the response indefinitely
+			auto response = future.get();
+			// publish the feedback
+			_current_temperature = response->temperature;
+			feedback->temperature = _current_temperature;
+			feedback->progress = (_current_temperature - initial_temperature) * 100 /
+			                     (target_temperature - initial_temperature);
+			goalHandle->publish_feedback(feedback);
+			RCLCPP_DEBUG(this->get_logger(), "Publishing feedback: '%s'", to_string(feedback->progress).c_str());
+		}
+
+//		result->success = true;
+		result->temperature = _current_temperature;
+//		result->message = "Temperature set successfully";
+		goalHandle->succeed(result);
+		action_server_busy = false;
 	}
 };
 
