@@ -1,0 +1,5 @@
+bool increment true     # increment the temperature by default
+---
+bool success            # success flag
+int16 temperature       # current temperature
+string message          # error message

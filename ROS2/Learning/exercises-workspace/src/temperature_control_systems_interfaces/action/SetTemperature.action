@@ -1,0 +1,8 @@
+int16 temperature
+---
+int16 temperature
+bool success
+string message
+---
+int16 temperature
+int16 progress
